@@ -2,6 +2,8 @@
 import { Module } from '@nestjs/common';
 import configuration from './config';
 import { MonitorModule } from './modules/monitor/monitor.module';
+import { AlertModule } from './modules/alert/alert.module';
+
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
@@ -16,7 +18,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       useFactory: (config: ConfigService) => config.get('database'),
       inject: [ConfigService],
     }),
-    MonitorModule
+    MonitorModule,
+    AlertModule
   ],
 })
 export class AppModule {}

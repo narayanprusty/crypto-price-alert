@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpService, Injectable } from '@nestjs/common';
 import { UpholdService } from '../../libs/uphold/uphold.service';
 import { MonitorRepository } from './monitor.repository';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MonitorDto } from './dto/monitor.dto';
 import { BigNumber } from "bignumber.js";
-import { AlertRepository } from '../alerts/repositories/alert.repository';
+import { AlertRepository } from '../alert/repositories/alert.repository';
+import { WebhookRepository } from '../alert/repositories/webhook.repository';
 
 @Injectable()
 export class MonitorService {
@@ -18,7 +19,12 @@ export class MonitorService {
     @InjectRepository(AlertRepository)
     private alertRepository: AlertRepository,
 
-    private upholdService: UpholdService
+    @InjectRepository(WebhookRepository)
+    private webhookRespository: WebhookRepository,
+
+    private upholdService: UpholdService,
+
+    private httpService: HttpService
   ) {
     this.fetchSupportedCurrncies()
     this.startMonitoring()
@@ -67,17 +73,30 @@ export class MonitorService {
       this.priceTracker[currencyPair] = rate
       return
     } else {
-      const priceChange = (new BigNumber(((new BigNumber(this.priceTracker[currencyPair])).minus(new BigNumber(rate))).dividedBy(
+      let priceChange = (new BigNumber(((new BigNumber(this.priceTracker[currencyPair])).minus(new BigNumber(rate))).dividedBy(
         new BigNumber((new BigNumber(this.priceTracker[currencyPair])).plus(new BigNumber(rate))).dividedBy(2)
       ))).times(100).toFormat(2)
-      
-      if((new BigNumber(priceChange)).gte(change)) {
 
+      priceChange = (Math.abs(parseFloat(priceChange))).toString()
+
+      if((new BigNumber(priceChange)).gte(change)) {
         await this.alertRepository.createAlert(
           rate,
           currencyPair,
           parseFloat(priceChange)
         )
+
+        const notifyViaWebhook = async (url, data) => {
+          await this.httpService.post(
+            url, data
+          ).toPromise()
+        }
+  
+        (await this.webhookRespository.find({})).forEach(webhook => notifyViaWebhook(webhook.url, {
+          rate,
+          currencyPair,
+          priceChange: parseFloat(priceChange)
+        }))
       }
 
       this.priceTracker[currencyPair] = rate
