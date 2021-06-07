@@ -80,6 +80,9 @@ export class MonitorService {
       priceChange = (Math.abs(parseFloat(priceChange))).toString()
 
       if((new BigNumber(priceChange)).gte(change)) {
+
+        console.info(`Alert: Pair: ${currencyPair}, Rate: ${rate} and Change: ${change}`)
+
         await this.alertRepository.createAlert(
           rate,
           currencyPair,

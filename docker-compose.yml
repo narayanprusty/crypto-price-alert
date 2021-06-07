@@ -1,0 +1,28 @@
+services:
+  postgres:
+    container_name: postgres
+    image: postgres
+    hostname: postgres
+    networks:
+      - crypto-network
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+  api:
+      container_name: crypto
+      image: crypto
+      environment:
+        POSTGRES_HOST: "postgres"
+      build:
+          context: .
+          dockerfile: ./Dockerfile
+      ports:
+          - 3000:3000
+      networks:
+          - crypto-network
+      depends_on:
+          - "postgres"
+
+networks:
+  crypto-network:
